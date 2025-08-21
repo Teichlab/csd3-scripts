@@ -1,0 +1,93 @@
+#!/usr/bin/env python
+
+import subprocess
+import argparse
+import sys
+import os
+
+def subwrap(call):
+    '''
+    A helper function that calls shell commands and returns the stdout for python processing.
+    
+    Input:
+     * call - the shell command to run and acquire the stdout of
+    
+    Returns the stdout of the command
+    '''
+    return subprocess.run(call, shell=True, stdout=subprocess.PIPE).stdout.decode('utf-8').rstrip()
+
+def parse_args():
+    #the various slurm options are thankfully clear, so we match them pretty close
+    #the only real differences are accepting a log file folder
+    #along with gpus as a number and time as number of hours
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-p", dest="p", default="icelake-himem", help="The partition to use, in practice icelake-himem for CPU or ampere for GPU. Default: icelake-himem")
+    parser.add_argument("-A", dest="A", help="The account to use. Default: Your (POLONIUS-)TEICHMANN-SL3 account for CPU or GPU")
+    parser.add_argument("-N", dest="N", type=int, default=1, help="Number of nodes to request. Default: 1")
+    parser.add_argument("-n", dest="n", type=int, default=1, help="Number of tasks, relevant for MPI parallelisation. Default: 1")
+    parser.add_argument("-c", dest="c", type=int, help="CPU jobs - number of CPUs to request (per task, you get n*c total cores). Translates to memory, with ~6.6GB of RAM per core on icelake-himem. Up to 72 cores per icelake-himem node.")
+    parser.add_argument("-g", dest="g", type=int, help="GPU jobs - number of GPUs to request. A GPU comes with 32 cores and 250GB RAM. Up to four GPUs per node.")
+    parser.add_argument("-t", dest="t", type=int, required=True, help="Number of hours of wall time to request for the job.")
+    parser.add_argument("-J", dest="J", type=str, required=True, help="Job name.")
+    parser.add_argument("-l", dest="l", type=str, default=".", help="Directory to write the logs to.")
+    parser.add_argument("-e", dest="e", help="Logging error file. Default: JobName.eJobID in the log directory")
+    parser.add_argument("-o", dest="o", help="Logging output file. Default: JobName.oJobID in the log directory")
+    parser.add_argument("-conda", dest="conda", help="Optional, Conda environment to activate prior to running command")
+    parser.add_argument("command", nargs="+")
+    args = parser.parse_args()
+    #sanity check the arguments. are we GPU or not?
+    if args.g is not None:
+        #we are GPU. set partition to ampere
+        args.p = "ampere"
+    elif args.c is not None:
+        #we're CPU. override partition with icelake-himem if set to ampere
+        if args.p == "ampere":
+            args.p = "icelake-himem"
+    else:
+        raise ValueError("one of -c or -g needs to be set")
+    #set up default account if needed
+    if args.A is None:
+        #some folks are TEICHMANN-SL3 and some are POLONIUS-TEICHMANN-SL3
+        #check which they are via mybalance and set the default accordingly
+        queue_prefix = ""
+        if subwrap("mybalance | grep POLONIUS | wc -l") != "0":
+            queue_prefix = "POLONIUS-"
+        #the queue suffix depends entirely on the partition
+        if args.p == "ampere":
+            queue_suffix = "GPU"
+        else:
+            queue_suffix = "CPU"
+        args.A = queue_prefix+"TEICHMANN-SL3-"+queue_suffix
+    #if -e and -o are provided, take them and run with it
+    #otherwise set them to spawn in log dir
+    if (args.e is None) and (args.o is None):
+        args.e = os.path.join(args.l, "%x.e%A")
+        args.o = os.path.join(args.l, "%x.o%A")
+    return args
+
+def main():
+    args = parse_args()
+    sys.stdout.write("#!/bin/bash\n")
+    sys.stdout.write("#SBATCH -p "+args.p+"\n")
+    sys.stdout.write("#SBATCH -A "+args.A+"\n")
+    sys.stdout.write("#SBATCH -N "+str(args.N)+"\n")
+    sys.stdout.write("#SBATCH -n "+str(args.n)+"\n")
+    #GPU specifies GPUs, CPU specifies cores
+    if args.p == "ampere":
+        sys.stdout.write("#SBATCH --gres=gpu:"+str(args.g)+"\n")
+    else:
+        sys.stdout.write("#SBATCH -c "+str(args.c)+"\n")
+    #args.t is number of hours, turn to hh:mm:ss for slurm to be happy
+    sys.stdout.write("#SBATCH -t "+str(args.t)+":00:00\n")
+    sys.stdout.write("#SBATCH -J "+args.J+"\n")
+    sys.stdout.write("#SBATCH -e "+args.e+"\n")
+    sys.stdout.write("#SBATCH -o "+args.o+"\n")
+    sys.stdout.write("\n")
+    #there may or may not be a conda
+    if args.conda:
+        sys.stdout.write('eval "$(conda shell.bash hook)"\n')
+        sys.stdout.write("conda activate "+args.conda+"\n")
+    sys.stdout.write(" ".join(args.command)+"\n")
+
+if __name__ == "__main__":
+    main()
