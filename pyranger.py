@@ -14,7 +14,9 @@ def parse_args():
     parser.add_argument('--tcrab', dest='tcrab', type=str, default=None, help='Optional. TCR-AB sample ID.')
     parser.add_argument('--bcr', dest='bcr', type=str, default=None, help='Optional. BCR sample ID.')
     parser.add_argument('--tcrgd', dest='tcrgd', type=str, default=None, help='Optional. ATAC sample ID.')
-    parser.add_argument('--reference', dest='reference', type=str, required=True, help='Path to cellranger reference to use')
+    parser.add_argument('--runid', dest='runid', type=str, default=None, help='Optional. Manual override of the ID to use when running cellranger')
+    parser.add_argument('--reference', dest='reference', type=str, default=None, help='Path to cellranger reference to use')
+    parser.add_argument('--vdj-reference', dest='vdj_reference', type=str, default=None, help='Path to cellranger VDJ reference to use specifically for multi calls')
     parser.add_argument('--feature-ref', dest='feature_ref', type=str, default=None, help='CITE only. Path to feature reference file to use.')
     parser.add_argument('--primers', dest='primers', type=str, default=None, help='VDJ only. Optional. Path to file with inner enrichment primers.')
     parser.add_argument('--chemistry', dest='chemistry', type=str, help='Optional. 10X chemistry argument to pass to Cellranger.')
@@ -29,7 +31,9 @@ def parse_args():
     args.samples = [i for i in samples if i is not None]
     if len(args.samples) == 0:
         raise ValueError("At least one of the various sample IDs needs to be provided")
-    args.runid = "-".join(args.samples)
+    #set the run ID unless manually overridden
+    if args.runid is None:
+        args.runid = "-".join(args.samples)
     if (args.cite is not None) and (args.feature_ref is None):
         raise ValueError("Need to specify feature reference for CITE")
     #set up path to csd3-scripts, i.e. where this is
