@@ -125,6 +125,9 @@ def main():
             else:
                 if args.no_bam:
                     cellranger_call.append("--no-bam")
+        #sort out chemistry
+        if args.chemistry is not None:
+            cellranger_call.append("--chemistry="+args.chemistry)
     #vdj prep
     if args.command == "vdj":
         #easily pass fastqs as relative path
@@ -141,9 +144,36 @@ def main():
         #there may be inner enrichment primers
         if args.primers is not None:
             cellranger_call.append("--inner-enrichment-primers="+args.primers)
-    #sort out chemistry
-    if args.chemistry is not None:
-        cellranger_call.append("--chemistry="+args.chemistry)
+        #sort out chemistry
+        if args.chemistry is not None:
+            cellranger_call.append("--chemistry="+args.chemistry)
+    #multi prep
+    if args.command == "multi":
+        #TODO: expand with non-VDJ functionality as necessary
+        #the actual command itself is trivial
+        cellranger_call.append("--csv=config.csv")
+        #the building of the config itself though, not so much
+        script_lines.append("#constructing multi config, create empty file to write to")
+        script_lines.append('echo "" > config.csv')
+        #VDJ specifics!
+        if (args.tcrab is not None) or (args.bcr is not None) or (args.tcrgd is not None):
+            script_lines.append('echo "[vdj]" >> config.csv')
+            script_lines.append('echo "reference-path,'+args.vdj_reference+'" >> config.csv')
+            #stash primers if provided
+            if args.primers is not None:
+                script_lines.append('echo "inner-enrichment-primers,'+args.primers+'" >> config.csv')
+            script_lines.append('echo "" >> config.csv')
+        #library definition section
+        script_lines.append('echo "[libraries]" >> config.csv')
+        script_lines.append('echo "fastq_id,fastqs,feature_types" >> config.csv')
+        #need absolute path to the fastq folder
+        if args.tcrab is not None:
+            script_lines.append('echo "'+args.tcrab+',$(realpath fastq),VDJ-T" >> config.csv')
+        if args.bcr is not None:
+            script_lines.append('echo "'+args.bcr+',$(realpath fastq),VDJ-B" >> config.csv')
+        if args.tcrgd is not None:
+            script_lines.append('echo "'+args.tcrgd+',$(realpath fastq),VDJ-T-GD" >> config.csv')
+        script_lines.append("")
     #do resource stuff
     cellranger_call.append("--localcores="+str(args.cores))
     #6.6GB of RAM per core, and let's take a smidge off for safety
