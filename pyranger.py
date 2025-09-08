@@ -63,8 +63,8 @@ def main():
     script_lines.append("if [ ! -d fastq ]")
     script_lines.append("then")
     script_lines.append("    mkdir fastq && cd fastq")
-    #the various actually set sample IDs are in args.runid
-    for present_sample in args.runid.split("-"):
+    #retrieve fastqs for various set sample IDs
+    for present_sample in args.samples:
         script_lines.append("    bash "+args.location+"/getfastq.sh "+present_sample)
     script_lines.append("    cd ..")
     script_lines.append("fi")
