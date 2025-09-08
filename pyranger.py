@@ -34,8 +34,17 @@ def parse_args():
     #set the run ID unless manually overridden
     if args.runid is None:
         args.runid = "-".join(args.samples)
+    #need a feature ref if we're doing a CITE
     if (args.cite is not None) and (args.feature_ref is None):
         raise ValueError("Need to specify feature reference for CITE")
+    #need a reference if we're doing a non-multi
+    if (args.command != "multi") and (args.reference is None):
+        raise ValueError("Need to specify --reference with a non-multi command")
+    if args.command == "multi":
+        if (args.reference is None) and ((args.gex is not None) or (args.cite is not None)):
+            raise ValueError("Need to specify --reference with GEX/CITE in multi")
+        if (args.vdj_reference is None) and ((args.tcrab is not None) or (args.bcr is not None) or (args.tcrgd is not None)):
+            raise ValueError("Need to specify --vdj-reference with VDJ libraries in multi")
     #set up path to csd3-scripts, i.e. where this is
     #get the realpath to this file and then strip out the pyranger.py at the end
     args.location = '/'.join(os.path.realpath(__file__).split('/')[:-1])
