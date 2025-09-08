@@ -154,7 +154,7 @@ def main():
         cellranger_call.append("--csv=config.csv")
         #the building of the config itself though, not so much
         script_lines.append("#constructing multi config, create empty file to write to")
-        script_lines.append('echo "" > config.csv')
+        script_lines.append('echo -n "" > config.csv')
         #VDJ specifics!
         if (args.tcrab is not None) or (args.bcr is not None) or (args.tcrgd is not None):
             script_lines.append('echo "[vdj]" >> config.csv')
