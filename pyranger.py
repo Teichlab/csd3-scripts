@@ -149,11 +149,11 @@ def main():
             #in the process, strip out any spaces from the image name
             #and yield the stored path for us to use here
             #provide the image path wrapped in quotes as a safeguard against spaces
-            script_lines_append('CYTAIMAGE=$(bash '+args.location+'/stashimage.sh '+args.gex+' "'+args.cytaimage+'")')
+            script_lines.append('CYTAIMAGE=$(bash '+args.location+'/stashimage.sh '+args.gex+' "'+args.cytaimage+'")')
             #use this yielded path for spaceranger
             cellranger_call.append("--cytaimage=${CYTAIMAGE}")
             #same deal, second image
-            script_lines_append('IMAGE=$(bash '+args.location+'/stashimage.sh '+args.gex+' "'+args.image+'")')
+            script_lines.append('IMAGE=$(bash '+args.location+'/stashimage.sh '+args.gex+' "'+args.image+'")')
             cellranger_call.append("--image=${IMAGE}")
             #the slide/area stuff might be readable from the cytaimage, so don't just error if absent
             if args.slide is not None:
@@ -163,7 +163,7 @@ def main():
             if args.loupe_alignment is not None:
                 #may as well stash it with the images for safety
                 script_lines.append("#stash loupe alignment for safekeeping too")
-                script_lines_append('LOUPE=$(bash '+args.location+'/stashimage.sh '+args.gex+' "'+args.loupe_alignment+'")')
+                script_lines.append('LOUPE=$(bash '+args.location+'/stashimage.sh '+args.gex+' "'+args.loupe_alignment+'")')
                 cellranger_call.append("--loupe-alignment=${LOUPE}")
             script_lines.append("")
             #no-bam/create-bam version breakpoint is 3.0.0
