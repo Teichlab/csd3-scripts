@@ -17,6 +17,7 @@ def parse_args():
     parser.add_argument('--runid', dest='runid', type=str, default=None, help='Optional. Manual override of the ID to use when running cellranger')
     parser.add_argument('--reference', dest='reference', type=str, default=None, help='Path to cellranger reference to use')
     parser.add_argument('--vdj-reference', dest='vdj_reference', type=str, default=None, help='Path to cellranger VDJ reference to use specifically for multi calls')
+    parser.add_argument('--probe-set', dest='probe_set', type=str, default=None, help='Path to probe file to use, if probes were used')
     parser.add_argument('--feature-ref', dest='feature_ref', type=str, default=None, help='CITE only. Path to feature reference file to use.')
     parser.add_argument('--primers', dest='primers', type=str, default=None, help='VDJ only. Optional. Path to file with inner enrichment primers.')
     parser.add_argument('--cytaimage', dest='cytaimage', type=str, default=None, help='Visium only. Path to CytAssist image.')
