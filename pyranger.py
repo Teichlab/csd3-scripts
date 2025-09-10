@@ -19,6 +19,11 @@ def parse_args():
     parser.add_argument('--vdj-reference', dest='vdj_reference', type=str, default=None, help='Path to cellranger VDJ reference to use specifically for multi calls')
     parser.add_argument('--feature-ref', dest='feature_ref', type=str, default=None, help='CITE only. Path to feature reference file to use.')
     parser.add_argument('--primers', dest='primers', type=str, default=None, help='VDJ only. Optional. Path to file with inner enrichment primers.')
+    parser.add_argument('--cytaimage', dest='cytaimage', type=str, default=None, help='Visium only. Path to CytAssist image.')
+    parser.add_argument('--image', dest='image', type=str, default=None, help='Visium only. Path to morphology (H&E) image.')
+    parser.add_argument('--slide', dest='slide', type=str, default=None, help='Visium only. Optional. Slide ID.')
+    parser.add_argument('--area', dest='area', type=str, default=None, help='Visium only. Optional. Area on slide.')
+    parser.add_argument('--loupe-alignment', dest='loupe_alignment', type=str, default=None, help='Visium only. Optional. Path to Loupe alignment JSON of the two images.')
     parser.add_argument('--chemistry', dest='chemistry', type=str, help='Optional. 10X chemistry argument to pass to Cellranger.')
     parser.add_argument('--cores', dest='cores', type=int, default=10, help='Number of cores to use. Default: 10')
     parser.add_argument('--no-bam', dest='no_bam', action='store_true', help='Flag. If provided, will skip creating BAMs in output if applicable.')
@@ -37,6 +42,12 @@ def parse_args():
     #need a feature ref if we're doing a CITE
     if (args.cite is not None) and (args.feature_ref is None):
         raise ValueError("Need to specify feature reference for CITE")
+    #need cytaimage and image if we're doing a spaceranger
+    if os.path.basename(args.cellranger) == "spaceranger":
+        if args.cytaimage is None:
+            raise ValueError("--cytaimage needs to be set for spaceranger")
+        if args.image is None:
+            raise ValueError("--image needs to be set for spaceranger")
     #need a reference if we're doing a non-multi
     if (args.command != "multi") and (args.reference is None):
         raise ValueError("Need to specify --reference with a non-multi command")
@@ -102,14 +113,14 @@ def main():
         else:
             #need to pass fastq folder to count, relative path okay here
             cellranger_call.append("--fastqs=fastq")
-        #couple of differences based on whether it's arc or vanilla count
+        #couple of differences based on whether it's arc, space or vanilla count
         if os.path.basename(args.cellranger) == "cellranger-arc":
             #arc uses the more stock reference name for the arguments
             cellranger_call.append("--reference="+args.reference)
             #at this point, it uses the old --no-bam nomenclature
             if args.no_bam:
                 cellranger_call.append("--no-bam")
-        else:
+        elif os.path.basename(args.cellranger) == "cellranger":
             #good old vanilla count, sticking with transcriptome
             cellranger_call.append("--transcriptome="+args.reference)
             #we may have a feature reference to stick in there
@@ -118,6 +129,41 @@ def main():
             #NOTE: pre-5.0.0 cellrangers don't have --no-bam support
             #cellranger 8.0.0 reworked --no-bam into a mandatory --create-bam= instead
             if compare_version(args.cellranger, "8.0.0"):
+                if args.no_bam:
+                    cellranger_call.append("--create-bam=false")
+                else:
+                    cellranger_call.append("--create-bam=true")
+            else:
+                if args.no_bam:
+                    cellranger_call.append("--no-bam")
+        elif os.path.basename(args.cellranger) == "spaceranger":
+            #spaceranger also uses transcriptome
+            cellranger_call.append("--transcriptome="+args.reference)
+            #a bunch of spaceranger stuff - probe sets, images, slides/areas
+            if args.probe_set is not None:
+                cellranger_call.append("--probe-set="+args.probe_set)
+            #for the images, we've got to also stash them into the RFS image bank
+            script_lines.append("#stash images in RFS")
+            #use helper script to potentially copy image to the storage
+            #in the process, strip out any spaces from the image name
+            #and yield the stored path for us to use here
+            #provide the image path wrapped in quotes as a safeguard against spaces
+            script_lines_append('CYTAIMAGE=$(bash '+args.location+'/stashimage.sh '+args.gex+' "'+args.cytaimage+'")')
+            #use this yielded path for spaceranger
+            cellranger_call.append("--cytaimage=${CYTAIMAGE}")
+            #same deal, second image
+            script_lines_append('IMAGE=$(bash '+args.location+'/stashimage.sh '+args.gex+' "'+args.image+'")')
+            cellranger_call.append("--image=${IMAGE}")
+            script_lines.append("")
+            #the slide/area stuff might be readable from the cytaimage, so don't just error if absent
+            if args.slide is not None:
+                cellranger_call.append("--slide="+args.slide)
+            if args.area is not None:
+                cellranger_call.append("--area="+args.area)
+            if args.loupe_alignment is not None:
+                cellranger_call.append("--loupe-alignment="+args.loupe_alignment)
+            #no-bam/create-bam version breakpoint is 3.0.0
+            if compare_version(args.cellranger, "3.0.0"):
                 if args.no_bam:
                     cellranger_call.append("--create-bam=false")
                 else:
