@@ -3,7 +3,7 @@ set -eo pipefail
 
 #run with the CRAM file name to convert as the positional argument
 #but we actually care about its basename, with the .cram gone
-CRAMFILE=$(basename $1)
+CRAMFILE=$(basename $1 .cram)
 
 #we need samtools here
 module load ceuadmin/samtools/1.20
