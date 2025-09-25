@@ -94,6 +94,13 @@ def main():
     script_lines.append("    cd ..")
     script_lines.append("fi")
     script_lines.append("")
+    #remove lock file if encountered, CSD3 sometimes kills unglamorously
+    script_lines.append("#remove lock file if rebooting after aggressive shutdown")
+    script_lines.append("if [ -f "+args.runid+"/_lock ]")
+    script_lines.append("then")
+    script_lines.append("    rm "+args.runid+"/_lock")
+    script_lines.append("fi")
+    script_lines.append("")
     #construct cellranger call as a list. always provide our ID
     cellranger_call = [args.cellranger, args.command, "--id="+args.runid]
     #count prep
