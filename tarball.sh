@@ -20,4 +20,4 @@ TARBALLNAME=$(basename ${TOTARBALL}.tar.gz)
 
 #and we're good. commencing tarballing
 mkdir -p ${TARBALLDIR}
-tar -czvf ${TOTARBALL} ${TARBALLDIR}/${TARBALLNAME}
+tar -czvf ${TARBALLDIR}/${TARBALLNAME} ${TOTARBALL}
