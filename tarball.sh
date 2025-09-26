@@ -20,4 +20,8 @@ TARBALLNAME=$(basename ${TOTARBALL}.tar.gz)
 
 #and we're good. commencing tarballing
 mkdir -p ${TARBALLDIR}
-tar -czvf ${TARBALLDIR}/${TARBALLNAME} ${TOTARBALL}
+#need to actually park myself in the folder with this subfolder in it
+#as otherwise the entire path is somehow preserved in the resulting extraction
+cd $(dirname ${TOTARBALL})
+#this now just makes a single folder when extracted
+tar -czvf ${TARBALLDIR}/${TARBALLNAME} $(basename ${TOTARBALL})
