@@ -6,7 +6,7 @@ set -eo pipefail
 TOTARBALL=$(realpath $1)
 
 #first off, are we even in sharedData here?
-if [$(echo ${TOTARBALL} | grep "/rds/project/rds-C9woKbOCf2Y/sharedData" | wc -l) == 0 ]
+if [ $(echo ${TOTARBALL} | grep "/rds/project/rds-C9woKbOCf2Y/sharedData" | wc -l) == 0 ]
 then
     echo "Not a /rds/project/rds-C9woKbOCf2Y/sharedData path, exiting"
     exit 1
@@ -24,4 +24,5 @@ mkdir -p ${TARBALLDIR}
 #as otherwise the entire path is somehow preserved in the resulting extraction
 cd $(dirname ${TOTARBALL})
 #this now just makes a single folder when extracted
+#a list of contents can be examined via tar -tzvf in its .tar.gz form too
 tar -czvf ${TARBALLDIR}/${TARBALLNAME} $(basename ${TOTARBALL})
