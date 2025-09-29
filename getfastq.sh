@@ -17,7 +17,7 @@ SHASH=`echo ${SAMPLE} | cut -f 2 -d "_" | cut -c 1-5`
 #otherwise the CRUK renaming script overrides the resulting read files
 #we'll fakely rename the files to S2, S3, etc. to circumvent this
 scount=2
-for SEQ in /rds/project/rds-C9woKbOCf2Y/samples/${PROJECT}/${SHASH}/${SAMPLE}/sequencing/*
+for SEQ in /rfs/project/rfs-iCNyzSAaucw/libraries/${PROJECT}/${SHASH}/${SAMPLE}/sequencing/*
 do
     rsync -P ${SEQ}/*.${SAMPLE}.*.fq.gz .
     #use the official renaming script: https://genomicshelp.cruk.cam.ac.uk/tools/crukci_to_illumina.py
