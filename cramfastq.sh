@@ -19,16 +19,10 @@ module load ceuadmin/samtools/1.20
 #and that cram creation procedure inserts - as the delimiter between the two indices
 #in this exact case we care about the index reads
 
-#extract the first encountered BC tag in the CRAM
+#extract the first encountered BC tag in the CRAM and check if it has a - in there
 #the tags are tab-separated, remove everything that may show up after the BC tag is done
-#and for some prime CSD3 nonsense - the line will produce the output just fine but somehow throw an error status
-#specifically when ran from within a script. this was then traced to samtools view piped into anything
-#samtools bug? cluster nonsense? no idea, but it just breaks things without actually not working
-#so adding a || clause akin to handling irods bugs back at Sanger
-FIRSTBC=$(samtools view ${CRAMFILE}.cram | grep "BC:Z:" | head -n 1 | sed "s/.*BC:Z://" | sed "s/\\t.*//") || echo "crazy samtools view mystery error status, moving on"
-
-#so, do we have a - in the barcode?
-if [ $(echo ${FIRSTBC} | grep "-" | wc -l) == 1 ]
+#CSD3 PSA - can't catch the BC into a variable as SIGPIPE kicks in and the script errors out, but this works fine!
+if [ $(samtools view ${CRAMFILE}.cram | grep "BC:Z:" | head -n 1 | sed "s/.*BC:Z://" | sed "s/\\t.*//" | grep "-" | wc -l) == 1 ]
 then
     #generate index reads, we don't care about casava identifiers
     samtools fastq -1 ${CRAMFILE}.r_1.fq.gz -2 ${CRAMFILE}.r_2.fq.gz --i1 ${CRAMFILE}.i_1.fq.gz --i2 ${CRAMFILE}.i_2.fq.gz --index-format i*i* -n ${CRAMFILE}.cram
