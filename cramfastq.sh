@@ -21,7 +21,11 @@ module load ceuadmin/samtools/1.20
 
 #extract the first encountered BC tag in the CRAM
 #the tags are tab-separated, remove everything that may show up after the BC tag is done
-FIRSTBC=$(samtools view ${CRAMFILE}.cram | grep "BC:Z:" | head -n 1 | sed "s/.*BC:Z://" | sed "s/\\t.*//")
+#and for some prime CSD3 nonsense - the line will produce the output just fine but somehow throw an error status
+#specifically when ran from within a script. this was then traced to samtools view piped into anything
+#samtools bug? cluster nonsense? no idea, but it just breaks things without actually not working
+#so adding a || clause akin to handling irods bugs back at Sanger
+FIRSTBC=$(samtools view ${CRAMFILE}.cram | grep "BC:Z:" | head -n 1 | sed "s/.*BC:Z://" | sed "s/\\t.*//") || echo "crazy samtools view mystery error status, moving on"
 
 #so, do we have a - in the barcode?
 if [ $(echo ${FIRSTBC} | grep "-" | wc -l) == 1 ]
