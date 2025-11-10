@@ -1,0 +1,45 @@
+%%go to mermaid.live and paste this in and voila graph
+%%can technically comment out lines about images for a different flavour of ugly
+flowchart LR
+    subgraph CRUK
+        crukreads["SITSA8.r_[12].fq.gz"]
+    end
+    subgraph RDS
+        subgraph rdssequencing["sequencing"]
+            rdsreads["CIDP_01D28NER0FFPE1S6_VHD.r_[12].fq.gz"]
+            rdscram["CIDP_01D28NER0FFPE1S6_VHD.cram"]        
+        end
+        subgraph sharedData
+            rdsanalysis["spaceranger401-2020a"]
+        end
+    end
+    subgraph RCS
+        subgraph rcssequencing["sequencing"]
+            rcscram["CIDP_01D28NER0FFPE1S6_VHD.cram"]
+        end
+        subgraph rcsshared["sharedData_CSCI_tarballs"]
+            tarball["spaceranger401-2020a.tar.gz"]
+        end
+    end
+    subgraph RFS
+        subgraph sample_images
+            rfsimages["sample_images"]
+        end
+        subgraph libraries
+            libsequencing["sequencing"]:::dashed
+            libmapping["mapping"]:::dashed
+        end
+    end
+    inputimages["sample images"] -->|csd3-scripts/pyranger.py csd3-scripts/stashimage.sh| rfsimages
+    crukreads -->|hpc_admin/download_cruk.sh| rdsreads
+    rdsreads -->|hpc_admin/process_cruk.sh| rdscram
+    rdscram -->|csd3-scripts/cramfastq.sh| rdsreads
+    libsequencing -->|csd3-scripts/pyranger.py csd3-scripts/getfastq.sh| rdsanalysis
+    rfsimages -->|csd3-scripts/pyranger.py| rdsanalysis
+    rdssequencing -->|hpc_admin/process_cruk.sh| libsequencing
+    rdsanalysis -->|csd3-scripts/pyranger.py csd3-scripts/makelinks.sh| libmapping
+    rdsanalysis -.-x|csd3-scripts/rmlink.sh| libmapping
+    rdscram -->|hpc_admin/mirror_crams_to_tape.sh| rcscram
+    rdsanalysis -->|csd3-scripts/tarball.sh| tarball
+
+classDef dashed stroke-dasharray: 6 4, stroke:#000, stroke-width:2, fill:#fff;
