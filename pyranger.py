@@ -153,7 +153,7 @@ def main():
             	#we've got a probe set. we might need to extend it with extra probes
             	if args.extra_probes is not None:
             		script_lines.append("#prepare full probe list")
-            		script_lines.append("cp "+args.probe_set+" probeset.csv")
+            		script_lines.append("rsync -P "+args.probe_set+" probeset.csv")
             		#due to the append nature, this is always a list of files
             		for extra_file in args.extra_probes:
             			script_lines.append("cat "+extra_file+" >> probeset.csv")
