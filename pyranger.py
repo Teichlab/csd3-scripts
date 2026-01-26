@@ -18,6 +18,7 @@ def parse_args():
     parser.add_argument('--reference', dest='reference', type=str, default=None, help='Path to cellranger reference to use')
     parser.add_argument('--vdj-reference', dest='vdj_reference', type=str, default=None, help='Path to cellranger VDJ reference to use specifically for multi calls')
     parser.add_argument('--probe-set', dest='probe_set', type=str, default=None, help='Path to probe file to use, if probes were used')
+    parser.add_argument('--extra-probes', dest="extra_probes", action='append', type=str, default=None, help="Paths to extra probe CSVs (headerless) to append at the end of the main probe file, use argument multiple times to append multiple files")
     parser.add_argument('--feature-ref', dest='feature_ref', type=str, default=None, help='CITE only. Path to feature reference file to use.')
     parser.add_argument('--primers', dest='primers', type=str, default=None, help='VDJ only. Optional. Path to file with inner enrichment primers.')
     parser.add_argument('--cytaimage', dest='cytaimage', type=str, default=None, help='Visium only. Path to CytAssist image.')
@@ -149,7 +150,18 @@ def main():
             cellranger_call.append("--transcriptome="+args.reference)
             #a bunch of spaceranger stuff - probe sets, images, slides/areas
             if args.probe_set is not None:
-                cellranger_call.append("--probe-set="+args.probe_set)
+            	#we've got a probe set. we might need to extend it with extra probes
+            	if args.extra_probes is not None:
+            		script_lines.append("#prepare full probe list")
+            		script_lines.append("cp "+args.probe_set+" probeset.csv")
+            		#due to the append nature, this is always a list of files
+            		for extra_file in args.extra_probes:
+            			script_lines.append("cat "+extra_file+" >> probeset.csv")
+            		script_lines.append("")
+            		cellranger_call.append("--probe-set=probeset.csv")
+            	else:
+            		#no extra probes, just use the provided file
+                	cellranger_call.append("--probe-set="+args.probe_set)
             #for the images, we've got to also stash them into the RFS image bank
             script_lines.append("#stash images in RFS")
             #use helper script to potentially copy image to the storage
