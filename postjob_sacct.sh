@@ -1,14 +1,12 @@
 #!/bin/bash
 set -eo pipefail
 
-#run with the job ID as the positional argument
+#run with the job ID and the job's StdOut as the positional arguments
 JOBID=$1
+LOGFILE=$2
 
-#retrieve path to the job's log file via scontrol
-LOGFILE=$(scontrol show job ${JOBID} | grep StdOut | cut -f 2 -d "=")
+#can't pull location of log file from scontrol as that only persists for ~1h
+#so better to play it safe and just take it from input in case of cluster gunkage
 
-#park seff at the end of the log file as it's more useful than sacct
+#park seff at the end of the log file
 seff ${JOBID} >> ${LOGFILE}
-
-#here's the archival sacct syntax just in case
-#sacct -j "${JOBID}" --format=JobID,State,ExitCode,AllocCPUS,ReqCPUS,ReqMem,Timelimit,Elapsed,MaxRSS >> ${LOGFILE}

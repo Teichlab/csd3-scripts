@@ -88,8 +88,9 @@ def main():
     if args.postjob:
         #park postjob's logs into dumpster location on private RDS
         sys.stdout.write("mkdir -p ~/rds/hpc-work/postjob_sacct\n")
-        #the slurm job sees its own ID in SLURM_JOB_ID, direct the postjob to it
-        sys.stdout.write('sbatch -d afterany:${SLURM_JOB_ID} -p icelake-himem -A TEICHLAB-SL2-CPU -c 1 -t 0:05:00 -J postjob_sacct -o ~/rds/hpc-work/postjob_sacct/${SLURM_JOB_ID}.%j.out --wrap="bash /rfs/project/rfs-iCNyzSAaucw/ktp27/csd3-scripts/postjob_sacct.sh ${SLURM_JOB_ID}"\n')
+        #the slurm job sees its own ID in SLURM_JOB_ID and stdout file in SBATCH_OUTPUT
+        #direct the postjob to both of these
+        sys.stdout.write('sbatch -d afterany:${SLURM_JOB_ID} -p icelake-himem -A TEICHLAB-SL2-CPU -c 1 -t 0:05:00 -J postjob_sacct -o ~/rds/hpc-work/postjob_sacct/${SLURM_JOB_ID}.%j.out --wrap="bash /rfs/project/rfs-iCNyzSAaucw/ktp27/csd3-scripts/postjob_sacct.sh ${SLURM_JOB_ID} ${SBATCH_OUTPUT}"\n')
     #there may or may not be a conda
     if args.conda:
         sys.stdout.write('eval "$(conda shell.bash hook)"\n')
