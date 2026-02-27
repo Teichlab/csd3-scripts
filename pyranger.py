@@ -250,7 +250,7 @@ def main():
         #6.6GB of RAM per core, and let's take a smidge off for safety
         cellranger_call.append("--localmem="+str(math.floor(6.6*args.cores)-1))
     else:
-        cellranger_call.append("--localmem="+str(args.memory)-1)
+        cellranger_call.append("--localmem="+str(args.memory))
     #add extras at the very end
     cellranger_call.append(args.extras)
     #can now collapse into actual command
