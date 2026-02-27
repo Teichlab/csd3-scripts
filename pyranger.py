@@ -28,6 +28,7 @@ def parse_args():
     parser.add_argument('--loupe-alignment', dest='loupe_alignment', type=str, default=None, help='Visium only. Optional. Path to Loupe alignment JSON of the two images.')
     parser.add_argument('--chemistry', dest='chemistry', type=str, help='Optional. 10X chemistry argument to pass to Cellranger.')
     parser.add_argument('--cores', dest='cores', type=int, default=10, help='Number of cores to use. Default: 10')
+    parser.add_argument('--memory', dest='memory', type=int, default=None, help='GB of RAM to use. If not specified, will compute based on core count and CSD3 himem partition hardware specifics.')
     parser.add_argument('--no-bam', dest='no_bam', action='store_true', help='Flag. If provided, will skip creating BAMs in output if applicable.')
     parser.add_argument('--extras', dest='extras', type=str, default="", help='Extra arguments for cellranger, wrap in quotes if providing multiple')
     parser.add_argument('--script', dest='script', type=str, default="N01-ranger.sh", help='The path to write the constructed script to. Default: N01-ranger.sh')
@@ -64,15 +65,15 @@ def parse_args():
     return args
 
 def subwrap(call):
-	'''
-	A helper function that calls shell commands and returns the stdout for python processing.
-	
-	Input:
-	 * call - the shell command to run and acquire the stdout of
-	
-	Returns the stdout of the command
-	'''
-	return subprocess.run(call, shell=True, stdout=subprocess.PIPE).stdout.decode('utf-8').rstrip()
+    '''
+    A helper function that calls shell commands and returns the stdout for python processing.
+    
+    Input:
+     * call - the shell command to run and acquire the stdout of
+    
+    Returns the stdout of the command
+    '''
+    return subprocess.run(call, shell=True, stdout=subprocess.PIPE).stdout.decode('utf-8').rstrip()
 
 def compare_version(cellranger, min_version):
     #cellranger versions come in the form cellranger cellranger-#.#.#
@@ -150,18 +151,18 @@ def main():
             cellranger_call.append("--transcriptome="+args.reference)
             #a bunch of spaceranger stuff - probe sets, images, slides/areas
             if args.probe_set is not None:
-            	#we've got a probe set. we might need to extend it with extra probes
-            	if args.extra_probes is not None:
-            		script_lines.append("#prepare full probe list")
-            		script_lines.append("rsync -P "+args.probe_set+" probeset.csv")
-            		#due to the append nature, this is always a list of files
-            		for extra_file in args.extra_probes:
-            			script_lines.append("cat "+extra_file+" >> probeset.csv")
-            		script_lines.append("")
-            		cellranger_call.append("--probe-set=probeset.csv")
-            	else:
-            		#no extra probes, just use the provided file
-                	cellranger_call.append("--probe-set="+args.probe_set)
+                #we've got a probe set. we might need to extend it with extra probes
+                if args.extra_probes is not None:
+                    script_lines.append("#prepare full probe list")
+                    script_lines.append("rsync -P "+args.probe_set+" probeset.csv")
+                    #due to the append nature, this is always a list of files
+                    for extra_file in args.extra_probes:
+                        script_lines.append("cat "+extra_file+" >> probeset.csv")
+                    script_lines.append("")
+                    cellranger_call.append("--probe-set=probeset.csv")
+                else:
+                    #no extra probes, just use the provided file
+                    cellranger_call.append("--probe-set="+args.probe_set)
             #for the images, we've got to also stash them into the RFS image bank
             script_lines.append("#stash images in RFS")
             #use helper script to potentially copy image to the storage
@@ -245,8 +246,11 @@ def main():
         script_lines.append("")
     #do resource stuff
     cellranger_call.append("--localcores="+str(args.cores))
-    #6.6GB of RAM per core, and let's take a smidge off for safety
-    cellranger_call.append("--localmem="+str(math.floor(6.6*args.cores)-1))
+    if args.memory is None:
+        #6.6GB of RAM per core, and let's take a smidge off for safety
+        cellranger_call.append("--localmem="+str(math.floor(6.6*args.cores)-1))
+    else:
+        cellranger_call.append("--localmem="+str(args.memory)-1))
     #add extras at the very end
     cellranger_call.append(args.extras)
     #can now collapse into actual command
