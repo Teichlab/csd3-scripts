@@ -32,6 +32,7 @@ def parse_args():
     parser.add_argument('--no-bam', dest='no_bam', action='store_true', help='Flag. If provided, will skip creating BAMs in output if applicable.')
     parser.add_argument('--extras', dest='extras', type=str, default="", help='Extra arguments for cellranger, wrap in quotes if providing multiple')
     parser.add_argument('--script', dest='script', type=str, default="N01-ranger.sh", help='The path to write the constructed script to. Default: N01-ranger.sh')
+    parser.add_argument('--no-stash', dest='no_stash', action='store_true', help='Flag. If provided, will skip stashing the Visium HD image files via the helper bash script and use the provided paths.')
     parser.add_argument('--no-link', dest='no_link', action='store_true', help='Flag. If provided, will skip creating symlinks in central sample storage for mappings.')
     args = parser.parse_args()
     #create a combined ID joining the various IDs present
@@ -163,28 +164,36 @@ def main():
                 else:
                     #no extra probes, just use the provided file
                     cellranger_call.append("--probe-set="+args.probe_set)
-            #for the images, we've got to also stash them into the RFS image bank
-            script_lines.append("#stash images in RFS")
-            #use helper script to potentially copy image to the storage
-            #in the process, strip out any spaces from the image name
-            #and yield the stored path for us to use here
-            #provide the image path wrapped in quotes as a safeguard against spaces
-            script_lines.append('CYTAIMAGE=$(bash '+args.location+'/stashimage.sh '+args.gex+' "'+args.cytaimage+'")')
-            #use this yielded path for spaceranger
-            cellranger_call.append("--cytaimage=${CYTAIMAGE}")
-            #same deal, second image
-            script_lines.append('IMAGE=$(bash '+args.location+'/stashimage.sh '+args.gex+' "'+args.image+'")')
-            cellranger_call.append("--image=${IMAGE}")
+            if args.no_stash:
+                #just provide image paths as is
+                cellranger_call.append("--cytaimage="+args.cytaimage)
+                cellranger_call.append("--image="+args.image)
+                #same with the loupe alignment if present
+                if args.loupe_alignment is not None:
+                    cellranger_call.append("--loupe-alignment="+args.loupe_alignment)
+            else:
+                #for the images, we've got to also stash them into the RFS image bank
+                script_lines.append("#stash images in RFS")
+                #use helper script to potentially copy image to the storage
+                #in the process, strip out any spaces from the image name
+                #and yield the stored path for us to use here
+                #provide the image path wrapped in quotes as a safeguard against spaces
+                script_lines.append('CYTAIMAGE=$(bash '+args.location+'/stashimage.sh '+args.gex+' "'+args.cytaimage+'")')
+                #use this yielded path for spaceranger
+                cellranger_call.append("--cytaimage=${CYTAIMAGE}")
+                #same deal, second image
+                script_lines.append('IMAGE=$(bash '+args.location+'/stashimage.sh '+args.gex+' "'+args.image+'")')
+                cellranger_call.append("--image=${IMAGE}")
+                if args.loupe_alignment is not None:
+                    #may as well stash it with the images for safety
+                    script_lines.append("#stash loupe alignment for safekeeping too")
+                    script_lines.append('LOUPE=$(bash '+args.location+'/stashimage.sh '+args.gex+' "'+args.loupe_alignment+'")')
+                    cellranger_call.append("--loupe-alignment=${LOUPE}")
             #the slide/area stuff might be readable from the cytaimage, so don't just error if absent
             if args.slide is not None:
                 cellranger_call.append("--slide="+args.slide)
             if args.area is not None:
                 cellranger_call.append("--area="+args.area)
-            if args.loupe_alignment is not None:
-                #may as well stash it with the images for safety
-                script_lines.append("#stash loupe alignment for safekeeping too")
-                script_lines.append('LOUPE=$(bash '+args.location+'/stashimage.sh '+args.gex+' "'+args.loupe_alignment+'")')
-                cellranger_call.append("--loupe-alignment=${LOUPE}")
             script_lines.append("")
             #no-bam/create-bam version breakpoint is 3.0.0
             if compare_version(args.cellranger, "3.0.0"):
