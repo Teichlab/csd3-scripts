@@ -189,12 +189,12 @@ def main():
                     script_lines.append("#stash loupe alignment for safekeeping too")
                     script_lines.append('LOUPE=$(bash '+args.location+'/stashimage.sh '+args.gex+' "'+args.loupe_alignment+'")')
                     cellranger_call.append("--loupe-alignment=${LOUPE}")
+                script_lines.append("")
             #the slide/area stuff might be readable from the cytaimage, so don't just error if absent
             if args.slide is not None:
                 cellranger_call.append("--slide="+args.slide)
             if args.area is not None:
                 cellranger_call.append("--area="+args.area)
-            script_lines.append("")
             #no-bam/create-bam version breakpoint is 3.0.0
             if compare_version(args.cellranger, "3.0.0"):
                 if args.no_bam:
