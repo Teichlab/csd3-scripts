@@ -25,6 +25,7 @@ do
         --command count \
         --reference ${REFERENCE} \
         --gex ${LIBRARY} \
+        --cores ${CORES} \
         --no-bam
     #the wrapper is now successfully constructed in N01-ranger.sh, can submit
     /rfs/project/rfs-iCNyzSAaucw/ktp27/csd3-scripts/pysub -p ${PARTITION} -A TEICHLAB-SL2-CPU -c ${CORES} -t ${TIME} -J ${LIBRARY} -l logs "bash N01-ranger.sh" | sbatch
