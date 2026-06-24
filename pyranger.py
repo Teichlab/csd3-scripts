@@ -21,6 +21,7 @@ def parse_args():
     parser.add_argument('--extra-probes', dest="extra_probes", action='append', type=str, default=None, help="Paths to extra probe CSVs (headerless) to append at the end of the main probe file, use argument multiple times to append multiple files")
     parser.add_argument('--feature-ref', dest='feature_ref', type=str, default=None, help='CITE only. Path to feature reference file to use.')
     parser.add_argument('--primers', dest='primers', type=str, default=None, help='VDJ only. Optional. Path to file with inner enrichment primers.')
+    parser.add_argument('--flex-barcodes', dest='flex_barcodes', type=str, default=None, help='Flex in multi only. A comma-separated list of barcodes present in the pool, combinations of multiple barcodes for the same sample denoted with |. Sample names will be these but with | replaced with underscores.')
     parser.add_argument('--cytaimage', dest='cytaimage', type=str, default=None, help='Visium only. Path to CytAssist image.')
     parser.add_argument('--image', dest='image', type=str, default=None, help='Visium only. Path to morphology (H&E) image.')
     parser.add_argument('--slide', dest='slide', type=str, default=None, help='Visium only. Optional. Slide ID.')
@@ -234,6 +235,18 @@ def main():
         #the building of the config itself though, not so much
         script_lines.append("#constructing multi config, create empty file to write to")
         script_lines.append('echo -n "" > config.csv')
+        #GEX specifics!
+        if (args.gex is not None) or (args.cite is not None):
+            script_lines.append('echo "[gene-expression]" >> config.csv')
+            script_lines.append('echo "reference,'+args.reference+'" >> config.csv')
+            if args.probe_set is not None:
+                script_lines.append('echo "probe-set,'+args.probe_set+'" >> config.csv')
+            #TODO: figure this out pre-8.0.0, before there was create bam
+            if args.no_bam:
+                script_lines.append('echo "create-bam,false" >> config.csv')
+            else:
+                script_lines.append('echo "create-bam,true" >> config.csv')
+            script_lines.append('echo "" >> config.csv')
         #VDJ specifics!
         if (args.tcrab is not None) or (args.bcr is not None) or (args.tcrgd is not None):
             script_lines.append('echo "[vdj]" >> config.csv')
@@ -242,16 +255,36 @@ def main():
             if args.primers is not None:
                 script_lines.append('echo "inner-enrichment-primers,'+args.primers+'" >> config.csv')
             script_lines.append('echo "" >> config.csv')
+        #CITE specifics!
+        if args.cite is not None:
+            script_lines.append('echo "[feature]" >> config.csv')
+            script_lines.append('echo "reference,'+args.feature_ref+'" >> config.csv')
+            script_lines.append('echo "" >> config.csv')
         #library definition section
         script_lines.append('echo "[libraries]" >> config.csv')
         script_lines.append('echo "fastq_id,fastqs,feature_types" >> config.csv')
         #need absolute path to the fastq folder
+        if args.gex is not None:
+            script_lines.append('echo "'+args.gex+',$(realpath fastq),Gene Expression" >> config.csv')
+        if args.cite is not None:
+            script_lines.append('echo "'+args.cite+',$(realpath fastq),Antibody Capture" >> config.csv')
         if args.tcrab is not None:
             script_lines.append('echo "'+args.tcrab+',$(realpath fastq),VDJ-T" >> config.csv')
         if args.bcr is not None:
             script_lines.append('echo "'+args.bcr+',$(realpath fastq),VDJ-B" >> config.csv')
         if args.tcrgd is not None:
             script_lines.append('echo "'+args.tcrgd+',$(realpath fastq),VDJ-T-GD" >> config.csv')
+        #flex multiplexing!
+        if args.flex_barcodes is not None:
+            script_lines.append('echo "" >> config.csv')
+            script_lines.append('echo "[samples]" >> config.csv')
+            script_lines.append('echo "sample_id,probe_barcode_ids" >> config.csv')
+            #provided as a comma-split list
+            for flex_barcode in args.flex_barcodes.split(","):
+                #there might be multiples split with |
+                #in that case, for sample naming, replace with underscores
+                flex_barcode_sample = flex_barcode.replace("|","_")
+                script_lines.append('echo "'+flex_barcode_sample+','+flex_barcode+'" >> config.csv')
         script_lines.append("")
     #do resource stuff
     cellranger_call.append("--localcores="+str(args.cores))
