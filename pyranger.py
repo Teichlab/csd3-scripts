@@ -21,7 +21,7 @@ def parse_args():
     parser.add_argument('--extra-probes', dest="extra_probes", action='append', type=str, default=None, help="Paths to extra probe CSVs (headerless) to append at the end of the main probe file, use argument multiple times to append multiple files")
     parser.add_argument('--feature-ref', dest='feature_ref', type=str, default=None, help='CITE only. Path to feature reference file to use.')
     parser.add_argument('--primers', dest='primers', type=str, default=None, help='VDJ only. Optional. Path to file with inner enrichment primers.')
-    parser.add_argument('--flex-barcodes', dest='flex_barcodes', type=str, default=None, help='Flex in multi only. A comma-separated list of barcodes present in the pool, combinations of multiple barcodes for the same sample denoted with |. Sample names will be these but with | replaced with underscores.')
+    parser.add_argument('--flex-barcodes', dest='flex_barcodes', type=str, default=None, help='Flex in multi only. Either a path to a headerless CSV file with the sample name in the first column and the corresponding barcode(s) in the second, or a comma-separated list of barcodes present in the library. Multiple barcodes corresponding to the same sample to be joined by "|" in both cases as per 10X specifications. In the list of barcodes case, sample names will be the barcode list with "|" replaced by "_".')
     parser.add_argument('--cytaimage', dest='cytaimage', type=str, default=None, help='Visium only. Path to CytAssist image.')
     parser.add_argument('--image', dest='image', type=str, default=None, help='Visium only. Path to morphology (H&E) image.')
     parser.add_argument('--slide', dest='slide', type=str, default=None, help='Visium only. Optional. Slide ID.')
@@ -279,12 +279,20 @@ def main():
             script_lines.append('echo "" >> config.csv')
             script_lines.append('echo "[samples]" >> config.csv')
             script_lines.append('echo "sample_id,probe_barcode_ids" >> config.csv')
-            #provided as a comma-split list
-            for flex_barcode in args.flex_barcodes.split(","):
-                #there might be multiples split with |
-                #in that case, for sample naming, replace with underscores
-                flex_barcode_sample = flex_barcode.replace("|","_")
-                script_lines.append('echo "'+flex_barcode_sample+','+flex_barcode+'" >> config.csv')
+            #can be either a file or a list!
+            if os.path.exists(args.flex_barcodes):
+                #absorb sample,barcodes list
+                with open(args.flex_barcodes, "r") as fid:
+                    for flex_barcode in fid.readlines():
+                        #need to peel off the new line from the end here
+                        script_lines.append('echo "'+flex_barcode.rstrip()+'" >> config.csv')
+            else:
+                #provided as a comma-split list
+                for flex_barcode in args.flex_barcodes.split(","):
+                    #there might be multiples split with |
+                    #in that case, for sample naming, replace with underscores
+                    flex_barcode_sample = flex_barcode.replace("|","_")
+                    script_lines.append('echo "'+flex_barcode_sample+','+flex_barcode+'" >> config.csv')
         script_lines.append("")
     #do resource stuff
     cellranger_call.append("--localcores="+str(args.cores))
